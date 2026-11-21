@@ -1,3 +1,3 @@
-# packages/shared
+# shared
 
-Shared schemas, constants, and TypeScript/Python types utilized across web, api, and tests.
+Common schemas and type definitions.
