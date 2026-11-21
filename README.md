@@ -1,3 +1,3 @@
 # Group 2: Tech Stack Issues Finder
 
-A developer enters a stack and versions and gets public advisories, CVEs, end-of-life dates and upgrade paths.
+Enter your tech stack and component versions to find public security advisories, CVEs, end-of-life dates, and upgrade paths.
