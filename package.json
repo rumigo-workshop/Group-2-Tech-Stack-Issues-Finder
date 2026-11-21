@@ -9,6 +9,7 @@
   "scripts": {
     "compose:up": "docker compose up -d",
     "compose:down": "docker compose down",
-    "smoke:searxng": "./scripts/smoke_test_searxng.sh"
+    "smoke:searxng": "./scripts/smoke_test_searxng.sh",
+    "smoke:crawl4ai": "./scripts/smoke_test_crawl4ai.sh"
   }
 }
