@@ -1,23 +1,23 @@
 {
   "folders": [
     {
-      "name": "📦 Monorepo Root",
+      "name": "root",
       "path": "."
     },
     {
-      "name": "🌐 Web (Frontend)",
+      "name": "web",
       "path": "packages/web"
     },
     {
-      "name": "⚙️ API (Backend)",
+      "name": "api",
       "path": "packages/api"
     },
     {
-      "name": "🧪 Tests",
+      "name": "tests",
       "path": "packages/tests"
     },
     {
-      "name": "🐳 Infra",
+      "name": "infra",
       "path": "infra"
     }
   ],
