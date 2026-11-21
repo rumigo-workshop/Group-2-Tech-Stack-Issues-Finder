@@ -15,6 +15,7 @@ from models import (
     UpgradePath,
     ErrorResponse,
 )
+from research_engine import analyze_tech_stack
 
 app = FastAPI(
     title="Group 2 Tech Stack Issues Finder API",
@@ -68,43 +69,17 @@ async def create_research_job(payload: CreateJobRequest):
     }
     jobs_db[job_id] = job_record
 
-    # Seed mock report generation for immediate downstream pipeline consumption
-    findings: List[Finding] = []
-    upgrade_paths: List[UpgradePath] = []
-    sources: List[str] = []
-
-    for item in payload.stack:
-        sources.append(f"https://nvd.nist.gov/vuln/search/results?query={item.name}")
-        sources.append(f"https://endoflife.date/{item.name}")
-
-        # Basic baseline advisory structure per component
-        findings.append(
-            Finding(
-                id=f"ADV-{item.name.upper()}-001",
-                severity="medium",
-                component=item.name,
-                affected_versions=f"<= {item.version}",
-                fixed_in=f"{item.version}.1",
-                end_of_life_date="2027-01-01",
-                description=f"Public advisory check for {item.name} version {item.version}.",
-            )
-        )
-        upgrade_paths.append(
-            UpgradePath(
-                component=item.name,
-                current_version=item.version,
-                target_version=f"{item.version}.1",
-                breaking_changes_note="Patch release containing recommended security fixes.",
-            )
-        )
+    # Execute deterministic research engine pipeline (applicability, EOL, scoring)
+    stack_dicts = [{"name": item.name, "version": item.version} for item in payload.stack]
+    analysis = analyze_tech_stack(stack_dicts)
 
     reports_db[report_id] = {
         "report_id": report_id,
         "job_id": job_id,
-        "findings": findings,
-        "severity_distribution": SeverityDistribution(medium=len(findings)),
-        "upgrade_paths": upgrade_paths,
-        "sources": sources,
+        "findings": [Finding(**f) for f in analysis["findings"]],
+        "severity_distribution": SeverityDistribution(**analysis["severity_distribution"]),
+        "upgrade_paths": [UpgradePath(**u) for u in analysis["upgrade_paths"]],
+        "sources": analysis["sources"],
         "generated_at": now,
     }
 
