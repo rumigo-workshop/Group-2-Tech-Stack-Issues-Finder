@@ -1,0 +1,33 @@
+{
+  "folders": [
+    {
+      "name": "📦 Monorepo Root",
+      "path": "."
+    },
+    {
+      "name": "🌐 Web (Frontend)",
+      "path": "packages/web"
+    },
+    {
+      "name": "⚙️ API (Backend)",
+      "path": "packages/api"
+    },
+    {
+      "name": "🧪 Tests",
+      "path": "packages/tests"
+    },
+    {
+      "name": "🐳 Infra",
+      "path": "infra"
+    }
+  ],
+  "settings": {
+    "editor.tabSize": 2,
+    "files.exclude": {
+      "**/.git": true,
+      "**/__pycache__": true,
+      "**/.venv": true,
+      "**/node_modules": true
+    }
+  }
+}
