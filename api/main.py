@@ -2,7 +2,6 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException, Query, status
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import (
@@ -18,9 +17,8 @@ from models import (
 from research_engine import analyze_tech_stack
 
 app = FastAPI(
-    title="Group 2 Tech Stack Issues Finder API",
+    title="Tech Stack Issues Finder API",
     version="1.0.0",
-    description="Analyzes tech stacks for CVE advisories, EOL status, and upgrade paths.",
 )
 
 app.add_middleware(
@@ -31,30 +29,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory storage for demonstration and fast local test execution
 jobs_db: Dict[str, Dict] = {}
 reports_db: Dict[str, Dict] = {}
 
-@app.get(
-    "/health",
-    response_model=HealthResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Liveness check",
-    tags=["Monitoring"],
-)
+@app.get("/health", response_model=HealthResponse, status_code=status.HTTP_200_OK)
 async def get_health():
-    """Returns 200 and status ok. Does not verify external dependencies."""
     return HealthResponse(status="ok")
 
-@app.post(
-    "/research-jobs",
-    response_model=JobResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-    summary="Submit tech stack for analysis",
-    tags=["Research Jobs"],
-)
+@app.post("/research-jobs", response_model=JobResponse, status_code=status.HTTP_202_ACCEPTED)
 async def create_research_job(payload: CreateJobRequest):
-    """Submits a tech stack and active versions. Queues job for CVE & advisory research."""
     job_id = f"job-{uuid.uuid4()}"
     report_id = f"rep-{uuid.uuid4()}"
     now = datetime.now(timezone.utc)
@@ -69,7 +52,6 @@ async def create_research_job(payload: CreateJobRequest):
     }
     jobs_db[job_id] = job_record
 
-    # Execute deterministic research engine pipeline (applicability, EOL, scoring)
     stack_dicts = [{"name": item.name, "version": item.version} for item in payload.stack]
     analysis = analyze_tech_stack(stack_dicts)
 
@@ -85,26 +67,17 @@ async def create_research_job(payload: CreateJobRequest):
 
     return JobResponse(**job_record)
 
-@app.get(
-    "/research-jobs/{job_id}",
-    response_model=JobResponse,
-    summary="Get job status",
-    tags=["Research Jobs"],
-)
+@app.get("/research-jobs/{job_id}", response_model=JobResponse)
 async def get_research_job(job_id: str):
     job = jobs_db.get(job_id)
     if not job:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job with ID '{job_id}' not found.",
+            detail=f"job '{job_id}' not found",
         )
     return JobResponse(**job)
 
-@app.get(
-    "/research-jobs",
-    summary="List research jobs",
-    tags=["Research Jobs"],
-)
+@app.get("/research-jobs")
 async def list_research_jobs(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=10, ge=1, le=100),
@@ -125,17 +98,12 @@ async def list_research_jobs(
         "limit": limit,
     }
 
-@app.get(
-    "/reports/{report_id}",
-    response_model=ReportResponse,
-    summary="Fetch vulnerability report",
-    tags=["Reports"],
-)
+@app.get("/reports/{report_id}", response_model=ReportResponse)
 async def get_report(report_id: str):
     report = reports_db.get(report_id)
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Report with ID '{report_id}' not found.",
+            detail=f"report '{report_id}' not found",
         )
     return ReportResponse(**report)

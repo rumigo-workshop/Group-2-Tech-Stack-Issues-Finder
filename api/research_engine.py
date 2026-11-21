@@ -2,7 +2,6 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-# Official known EOL definitions for prominent frameworks and runtimes (endoflife.date reference)
 EOL_DATABASE: Dict[str, Dict[str, str]] = {
     "node": {
         "14": "2023-04-30",
@@ -34,7 +33,6 @@ EOL_DATABASE: Dict[str, Dict[str, str]] = {
     }
 }
 
-# Known security advisories with precise affected version ranges for research matching
 KNOWN_ADVISORIES: List[Dict] = [
     {
         "id": "CVE-2023-32002",
@@ -103,22 +101,16 @@ KNOWN_ADVISORIES: List[Dict] = [
 ]
 
 def parse_stack_input(entry: str) -> Tuple[str, str]:
-    """
-    Parses flexible stack inputs such as 'Node 18.17.0', 'react@17.0.2', 'Postgres:14'.
-    Returns (component_name, version).
-    """
     entry = entry.strip()
     match = re.split(r'[@\s:]+', entry, maxsplit=1)
     if len(match) == 2:
         component, version = match[0].lower(), match[1].strip()
-        # Strip leading 'v' if present (e.g. v18.17 -> 18.17)
         if version.startswith('v'):
             version = version[1:]
         return component, version
-    raise ValueError(f"Unable to parse component and version from input: '{entry}'")
+    raise ValueError(f"Invalid stack entry format: '{entry}'")
 
 def parse_semver(v: str) -> Tuple[int, int, int]:
-    """Extracts integer parts (major, minor, patch) from semver string."""
     parts = re.findall(r'\d+', v)
     major = int(parts[0]) if len(parts) > 0 else 0
     minor = int(parts[1]) if len(parts) > 1 else 0
@@ -126,7 +118,6 @@ def parse_semver(v: str) -> Tuple[int, int, int]:
     return major, minor, patch
 
 def compare_versions(v1: str, v2: str) -> int:
-    """Returns -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2."""
     t1 = parse_semver(v1)
     t2 = parse_semver(v2)
     if t1 < t2:
@@ -136,10 +127,6 @@ def compare_versions(v1: str, v2: str) -> int:
     return 0
 
 def is_version_affected(current_version: str, affected_range: str) -> bool:
-    """
-    Evaluates whether current_version satisfies the SemVer affected range condition.
-    Supports single clauses ('< 18.0.0') and compound clauses ('>= 16.0.0, < 16.20.1').
-    """
     clauses = [c.strip() for c in affected_range.split(',') if c.strip()]
     for clause in clauses:
         match = re.match(r'^(<=|>=|<|>|==|=)?\s*([0-9\.]+.*)$', clause)
@@ -164,7 +151,6 @@ def is_version_affected(current_version: str, affected_range: str) -> bool:
     return True
 
 def check_eol_status(component: str, version: str) -> Optional[Dict[str, str]]:
-    """Checks whether the given version series is past its end-of-life date."""
     comp_lower = component.lower()
     if comp_lower not in EOL_DATABASE:
         return None
@@ -185,11 +171,6 @@ def check_eol_status(component: str, version: str) -> Optional[Dict[str, str]]:
     return None
 
 def calculate_effort_and_impact(severity: str, current_v: str, target_v: Optional[str]) -> Tuple[int, int]:
-    """
-    Deterministic scoring engine (Milestone B-3.5):
-    Impact score (1-5): based on severity rating.
-    Effort score (1-5): based on SemVer migration delta.
-    """
     severity_map = {
         "critical": 5,
         "high": 4,
@@ -206,23 +187,15 @@ def calculate_effort_and_impact(severity: str, current_v: str, target_v: Optiona
     tgt_major, tgt_minor, _ = parse_semver(target_v)
 
     if tgt_major > cur_major:
-        # Major version bump: breaking changes likely
         effort = 5
     elif tgt_minor > cur_minor:
-        # Minor version bump: backwards-compatible features
         effort = 3
     else:
-        # Patch bump: simple drop-in fix
         effort = 1
 
     return impact, effort
 
 def sanitize_advisory_text(raw_text: str) -> str:
-    """
-    AI Safety filter (Milestone B-3.6):
-    Strips dangerous exploit steps, malicious payload scripts, or reverse shells
-    ensuring only safe remediation information is returned.
-    """
     dangerous_patterns = [
         r"(?i)curl\s+.*?\|\s*(?:bash|sh)",
         r"(?i)rm\s+-rf\s+/",
@@ -232,14 +205,10 @@ def sanitize_advisory_text(raw_text: str) -> str:
     ]
     sanitized = raw_text
     for pattern in dangerous_patterns:
-        sanitized = re.sub(pattern, "[EXPLOIT_PAYLOAD_REDACTED_BY_POLICY]", sanitized)
+        sanitized = re.sub(pattern, "[redacted]", sanitized)
     return sanitized
 
 def analyze_tech_stack(stack: List[Dict[str, str]]) -> Dict:
-    """
-    Main research pipeline:
-    Analyzes entered components, matches CVE applicability, checks EOL, and computes effort/impact.
-    """
     findings = []
     upgrade_paths = []
     sources = set()
@@ -252,11 +221,9 @@ def analyze_tech_stack(stack: List[Dict[str, str]]) -> Dict:
         sources.add(f"https://nvd.nist.gov/vuln/search/results?query={comp_name}")
         sources.add(f"https://endoflife.date/{comp_name}")
 
-        # Check EOL status
         eol_info = check_eol_status(comp_name, version)
         eol_date = eol_info["eol_date"] if eol_info else None
 
-        # Check known advisories for this component
         matched_advisories = [
             adv for adv in KNOWN_ADVISORIES
             if adv["component"] == comp_name and is_version_affected(version, adv["affected_range"])
@@ -287,10 +254,9 @@ def analyze_tech_stack(stack: List[Dict[str, str]]) -> Dict:
                     "component": comp_name,
                     "current_version": version,
                     "target_version": adv["fixed_in"],
-                    "breaking_changes_note": f"Upgrade fixes {adv['id']}. Upgrade effort rated {effort}/5.",
+                    "breaking_changes_note": f"Upgrade fixes {adv['id']}. Effort: {effort}/5.",
                 })
 
-        # If component is EOL but no specific CVE hit, register an EOL notice finding
         if eol_info and eol_info["is_expired"] and not matched_advisories:
             severity_distribution["medium"] += 1
             findings.append({
@@ -300,7 +266,7 @@ def analyze_tech_stack(stack: List[Dict[str, str]]) -> Dict:
                 "affected_versions": f"<= {eol_info['series']}.x",
                 "fixed_in": None,
                 "end_of_life_date": eol_info["eol_date"],
-                "description": f"{comp_name} series {eol_info['series']} reached end-of-life on {eol_info['eol_date']}. No further security updates.",
+                "description": f"{comp_name} {eol_info['series']} reached end-of-life on {eol_info['eol_date']}.",
                 "impact_score": 3,
                 "effort_score": 4,
             })
